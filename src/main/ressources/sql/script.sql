@@ -23,44 +23,25 @@ INSERT INTO type_abonnement (libelle, tarif, quota_livre, duree_pret_jour, quota
 ('professeur', 10.00, 6, 30, 3, 3, 30),
 ('senior', 6.00, 3, 14, 2, 1, 14);
 
--- Table des profils d'adhérents
-CREATE TABLE profil (
-    id SERIAL PRIMARY KEY,
-    type_profil VARCHAR(50) NOT NULL,
-    quota_livre INT NOT NULL CHECK (quota_livre >= 0),
-    duree_pret_jour INT NOT NULL DEFAULT 14, -- durée max du prêt en jours
-    quota_reservation INT NOT NULL DEFAULT 2, -- nombre max de réservations
-    quota_prolongement INT NOT NULL DEFAULT 1, -- nombre max de prolongements
-    nb_jour_prolongement INT NOT NULL DEFAULT 7 -- nombre de jours pour un prolongement
-);
-
-CREATE TABLE  type_abonnement (
-    id SERIAL PRIMARY KEY,
-    id_profil INT NOT NULL REFERENCES profil(id),
-    tarif NUMERIC(6,2) NOT NULL
-);
-
-
 -- Table des adhérents
 CREATE TABLE adherent (
     id SERIAL PRIMARY KEY,
     nom VARCHAR(100) NOT NULL,
     prenom VARCHAR(100) NOT NULL,
-    date_naissance DATE,
-    adresse VARCHAR(255) NOT NULL,
     email VARCHAR(150) UNIQUE NOT NULL,
     id_type_abonnement INT NOT NULL REFERENCES type_abonnement(id),
-    est_suspendu BOOLEAN DEFAULT FALSE,
-    date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    adresse VARCHAR(255) NOT NULL,
+    etat VARCHAR(20) NOT NULL CHECK (etat IN ('actif', 'bloque')),
+    date_naissance TIMESTAMP
 );
 
--- Table des abonnements
-CREATE TABLE abonnement (
+-- Table des inscriptions
+CREATE TABLE inscription (
     id SERIAL PRIMARY KEY,
-    id_adherent INTEGER REFERENCES adherent(id),
-    date_debut DATE NOT NULL,
-    date_fin DATE NOT NULL,
-    est_paye BOOLEAN DEFAULT FALSE
+    id_adherent INT NOT NULL REFERENCES adherent(id),
+    date_inscription TIMESTAMP NOT NULL,
+    date_expiration TIMESTAMP NOT NULL,
+    statut VARCHAR(20) NOT NULL CHECK (statut IN ('valide', 'expiree'))
 );
 
 -- Table des catégories de livre
@@ -69,15 +50,24 @@ CREATE TABLE categorie (
     nom VARCHAR(100) UNIQUE NOT NULL
 );
 
+INSERT INTO categorie (nom) VALUES
+('Fiction'),
+('Non-fiction'),
+('Science'),
+('Histoire'),
+('Biographie'),
+('Enfants'),
+('Adolescents'),
+('Romance');
+
 -- Table des livres
 CREATE TABLE livre (
     id SERIAL PRIMARY KEY,
     titre VARCHAR(200) NOT NULL,
     auteur VARCHAR(150) NOT NULL,
-    isbn VARCHAR(20) UNIQUE,
     id_categorie INT REFERENCES categorie(id),
-    date_ajout DATE DEFAULT CURRENT_DATE,
-    restriction _age INTEGER CHECK (restriction IN (NULL, 12, 16, 18)), -- restriction d'âge pour le prê
+    isbn VARCHAR(20) UNIQUE,
+    restriction VARCHAR(20) CHECK (restriction IN ('aucun', 'adulte'))
 );
 
 -- Table des exemplaires
@@ -93,39 +83,45 @@ CREATE TABLE pret (
     id SERIAL PRIMARY KEY,
     id_exemplaire INT NOT NULL REFERENCES exemplaire(id),
     id_adherent INT NOT NULL REFERENCES adherent(id),
-    date_emprunt DATE NOT NULL,
-    date_retour_prevue DATE NOT NULL,
-    date_retour_effective DATE,
-    est_prolonge BOOLEAN DEFAULT FALSE,
+    date_emprunt TIMESTAMP NOT NULL,
+    date_retour_prevue TIMESTAMP NOT NULL,
+    date_retour_effective TIMESTAMP,
     type_pret VARCHAR(20) NOT NULL CHECK (type_pret IN ('sur_place', 'emporte')),
     statut VARCHAR(20) NOT NULL CHECK (statut IN ('en_cours', 'termine', 'en_retard'))
+);
+
+CREATE TABLE historique_pret (
+    id SERIAL PRIMARY KEY,
+    id_pret INT NOT NULL REFERENCES pret(id),
+    action VARCHAR(30) NOT NULL, -- ex: 'prolongement', 'retour', 'emprunt'
+    date_action TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    commentaire TEXT
 );
 
 -- Table des réservations
 CREATE TABLE reservation (
     id SERIAL PRIMARY KEY,
     id_adherent INT NOT NULL REFERENCES adherent(id),
-    id_livre INT NOT NULL REFERENCES livre(id),
-    date_reservation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    date_expiration DATE,
-    statut VARCHAR(20) NOT NULL CHECK (statut IN ('active', 'expiree', 'honoree'))
+    id_exemplaire INT NOT NULL REFERENCES Exemplaire(id),
+    date_demande TIMESTAMP NOT NULL,
+    statut VARCHAR(20) NOT NULL CHECK (statut IN ('en_attente', 'acceptee', 'refusee'))
 );
 
 -- Table des pénalités
+DROP TABLE IF EXISTS penalite;
 CREATE TABLE penalite (
     id SERIAL PRIMARY KEY,
     id_adherent INT NOT NULL REFERENCES adherent(id),
     id_pret INT NOT NULL REFERENCES pret(id),
-    date_debut DATE NOT NULL,
-    date_fin DATE NOT NULL,
-    raison TEXT
+    date_debut TIMESTAMP NOT NULL,
+    date_fin TIMESTAMP NOT NULL,
+    reglee BOOLEAN NOT NULL DEFAULT FALSE
 );
-
 -- Table des jours fériés
-CREATE TABLE jour_ferie (
+CREATE TABLE jourferie (
     id SERIAL PRIMARY KEY,
-    date DATE UNIQUE NOT NULL,
-    description TEXT
+    date_ferie TIMESTAMP UNIQUE NOT NULL,
+    description VARCHAR(100)
 );
 
 -- Table des utilisateurs
@@ -179,7 +175,7 @@ ALTER TABLE pret ADD COLUMN nbprolongements integer DEFAULT 0;
 -- tsy azo atao prolonger prolongement
 -- -pret
 
-
+--- penalite kay manomboka amlay andro hanaterana ilay boky
 -- Liste fonctionnalite atao anaty document
 
 --- mila ampidirina anaty base ny prolongement genre hoe date taloha d date vaovao
