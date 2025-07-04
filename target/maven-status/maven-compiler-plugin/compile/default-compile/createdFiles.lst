@@ -1,0 +1,8 @@
+org\exemple\model\Utilisateur.class
+org\exemple\repository\UtilisateurRepository.class
+org\exemple\model\Adherent.class
+org\exemple\model\TypeAbonnement.class
+org\exemple\repository\TypeAbonnementRepository.class
+org\exemple\repository\AdherentRepository.class
+org\exemple\service\UtilisateurService.class
+org\exemple\contoller\LoginController.class
